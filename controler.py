@@ -29,10 +29,10 @@ class Phone(Field):
 class Birthday(Field):
     def __init__(self, value):
         try:
-            if re.match(r'^\d{2}\.\d{2}\.\d{4}$', value):
-                self.value = value
+            parsed_date = datetime.strptime(value, '%d.%m.%Y').date()
+            self.value = parsed_date.strftime('%d.%m.%Y')
         except ValueError:
-            raise ValueError("Invalid date format. Use DD.MM.YYYY")
+            raise ValueError("Некоректний формат дати. Використовуйте DD.MM.YYYY")
 
 
 class Record:
@@ -99,25 +99,26 @@ class AddressBook(UserDict):
 
         for record in self.data.values():
             if record.birthday:
-                birthday_date = datetime.strptime(record.birthday.value, '%d.%m.%Y')
+                try:
+                    birthday_date = datetime.strptime(record.birthday.value, '%d.%m.%Y').date()
+                    birthday_this_year = birthday_date.replace(year=today.year)
 
-                birthday_this_year = birthday_date.replace(year=today.year).date()
+                    if birthday_this_year < today:
+                        birthday_this_year = birthday_this_year.replace(year=today.year + 1)
 
-                if birthday_this_year < today:
-                    birthday_this_year = birthday_this_year.replace(year=today.year + 1)
+                    days_until_birthday = (birthday_this_year - today).days
+                    if 0 <= days_until_birthday <= days:
+                        congratulation_date = birthday_this_year
 
-                days_until_birthday = (birthday_this_year - today).days
-                if 0 <= days_until_birthday <= days:
-                    congratulation_date = birthday_this_year
+                        if birthday_this_year.weekday() in [5, 6]:
+                            congratulation_date += timedelta(days=(7 - birthday_this_year.weekday()))
 
-                    if birthday_this_year.weekday() in [5, 6]:
-                        congratulation_date = birthday_this_year + timedelta(days=(7 - birthday_this_year.weekday()))
-
-                    upcoming_birthdays.append({
-                        "name": record.name.value,
-                        "congratulation_date": congratulation_date.strftime("%d.%m.%Y")
-                    })
-
+                        upcoming_birthdays.append({
+                            "name": record.name.value,
+                            "congratulation_date": congratulation_date.strftime("%d.%m.%Y")
+                        })
+                except ValueError:
+                    continue
         return upcoming_birthdays
 
 
